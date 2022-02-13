@@ -11,7 +11,7 @@
         "-o",
         "${workspaceFolder}/out/test",
         "-Ofast",
-        "-lstunc",
+        "../native/target/debug/libstunc.dylib",
       ],
       "options": {
         "cwd": "${workspaceFolder}"
