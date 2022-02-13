@@ -3,17 +3,19 @@
 # Run `pod lib lint stun_client.podspec` to validate before publishing.
 #
 Pod::Spec.new do |s|
-  s.name             = 'stun_client'
-  s.version          = '0.0.1'
-  s.summary          = 'A new flutter plugin project.'
-  s.description      = <<-DESC
-A new flutter plugin project.
+  s.name                = 'stun_client'
+  s.version             = '0.0.1'
+  s.summary             = 'A simple STUN client.'
+  s.description         = <<-DESC
+  A simple STUN client.
                        DESC
-  s.homepage         = 'http://example.com'
-  s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Your Company' => 'email@example.com' }
-  s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*'
+  s.license             = { :file => '../LICENSE' }
+  s.author              = { 'Plato' => 'alan.mantoux@gmail.com' }
+  s.source              = { :path => '.' }
+  s.public_header_files = 'Classes**/*.h'
+  s.source_files        = 'Classes/**/*'
+  s.static_framework    = true
+  s.vendored_libraries  = "**/*.a"
   s.dependency 'Flutter'
   s.platform = :ios, '9.0'
 

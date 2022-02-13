@@ -344,8 +344,8 @@ impl Message {
                 attrs_buf.remove(0),
                 attrs_buf.remove(0),
             ]));
-            let length =
-                usize::from_be_bytes([0, 0, 0, 0, 0, 0, attrs_buf.remove(0), attrs_buf.remove(0)]);
+            let length = length(&mut attrs_buf);
+
             if attrs_buf.len() < length {
                 return Err(Error::ParseError);
             }
@@ -356,6 +356,16 @@ impl Message {
 
         Ok(attributes)
     }
+}
+
+#[cfg(target_pointer_width = "32")]
+fn length(buffer: &mut Vec<u8>) -> usize {
+    usize::from_be_bytes([0, 0, buffer.remove(0), buffer.remove(0)])
+}
+
+#[cfg(target_pointer_width = "64")]
+fn length(buffer: &mut Vec<u8>) -> usize {
+    usize::from_be_bytes([0, 0, 0, 0, 0, 0, buffer.remove(0), buffer.remove(0)])
 }
 
 /// Struct representing STUN header
