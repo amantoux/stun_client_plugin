@@ -67,10 +67,11 @@ impl Method {
     }
 
     /// Convert from Method to u16.
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_u16(&self) -> u16 {
         match self {
             Self::Binding => METHOD_BINDING,
-            Self::Unknown(method) => method.clone(),
+            Self::Unknown(method) => *method,
         }
     }
 }
@@ -98,13 +99,14 @@ impl Class {
     }
 
     /// Convert from u16 to Class.
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_u16(&self) -> u16 {
         match self {
             Self::Request => CLASS_REQUEST,
             Self::Indication => CLASS_INDICATION,
             Self::SuccessResponse => CLASS_SUCCESS_RESPONSE,
             Self::ErrorResponse => CLASS_ERROR_RESPONSE,
-            Self::Unknown(class) => class.clone(),
+            Self::Unknown(class) => *class,
         }
     }
 }
@@ -138,6 +140,7 @@ impl Attribute {
     }
 
     /// Convert from u16 to Attribute.
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_u16(&self) -> u16 {
         match self {
             Self::MappedAddress => ATTR_MAPPED_ADDRESS,
@@ -147,7 +150,7 @@ impl Attribute {
             Self::ChangeRequest => ATTR_CHANGE_REQUEST,
             Self::ResponseOrigin => ATTR_RESPONSE_ORIGIN,
             Self::ErrorCode => ATTR_ERROR_CODE,
-            Self::Unknown(attribute) => attribute.clone(),
+            Self::Unknown(attribute) => *attribute,
         }
     }
 
@@ -203,7 +206,7 @@ impl Attribute {
         let number = attr_value[3] as u16;
         let code = class + number;
         let reason = String::from_utf8(attr_value[4..].to_vec())
-            .unwrap_or(String::from("cannot parse error reason"));
+            .unwrap_or_else(|_| String::from("cannot parse error reason"));
         Some(ErrorCode::from(code, reason))
     }
 
@@ -271,7 +274,7 @@ impl Message {
 
         Message {
             header: Header::new(method, class, length, transaction_id),
-            attributes: attributes,
+            attributes,
         }
     }
 
@@ -282,15 +285,12 @@ impl Message {
         }
 
         let header = Header::from_raw(&buf[..HEADER_BYTE_SIZE])?;
-        let mut attrs = None;
+        let mut attributes = None;
         if buf.len() > HEADER_BYTE_SIZE {
-            attrs = Some(Message::decode_attrs(&buf[HEADER_BYTE_SIZE..])?);
+            attributes = Some(Message::decode_attrs(&buf[HEADER_BYTE_SIZE..])?);
         }
 
-        Ok(Message {
-            header: header,
-            attributes: attrs,
-        })
+        Ok(Message { header, attributes })
     }
 
     /// Converts a Message to a STUN protocol message raw bytes.
@@ -319,10 +319,7 @@ impl Message {
 
     /// Get the raw attribute bytes from Message.
     pub fn get_raw_attr_value(&self, attr: Attribute) -> Option<Vec<u8>> {
-        self.attributes
-            .as_ref()?
-            .get(&attr)
-            .and_then(|v| Some(v.clone()))
+        self.attributes.as_ref()?.get(&attr).cloned()
     }
 
     /// Get the transaction id from Message.
@@ -374,10 +371,10 @@ impl Header {
     /// Create a STUN header.
     pub fn new(method: Method, class: Class, length: u16, transaction_id: Vec<u8>) -> Header {
         Header {
-            class: class,
-            method: method,
-            length: length,
-            transaction_id: transaction_id,
+            class,
+            method,
+            length,
+            transaction_id,
         }
     }
 
@@ -394,9 +391,9 @@ impl Header {
         let length = u16::from_be_bytes([buf.remove(0), buf.remove(0)]);
 
         Ok(Header {
-            class: class,
-            method: method,
-            length: length,
+            class,
+            method,
+            length,
             // 0..3 is Magic Cookie
             transaction_id: buf[4..].to_vec(),
         })

@@ -39,7 +39,7 @@ fn post_stun_request(
         println!("Could not connect: {}", err);
         Error::DefaultError(format!("{}", err))
     })?;
-    socket.send(&bytes.as_slice()).map_err(|err| {
+    socket.send(bytes.as_slice()).map_err(|err| {
         println!("Could not send bytes: {}", err);
         Error::DefaultError(format!("{}", err))
     })?;
