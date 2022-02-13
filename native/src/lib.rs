@@ -43,6 +43,7 @@ fn post_stun_request(
         println!("Could not send bytes: {}", err);
         Error::DefaultError(format!("{}", err))
     })?;
+    #[cfg(debug_assertions)]
     println!("Sent!!");
     Ok(socket)
 }

@@ -18,6 +18,7 @@ pub extern "C" fn get_xor_mapped_address(
     result: *mut *mut c_char,
 ) -> c_int {
     unsafe {
+        #[cfg(debug_assertions)]
         println!("Entering the RUST world");
         let rust_stun_adress = CStr::from_ptr(stun_address).to_str();
         if rust_stun_adress.is_err() {
@@ -37,6 +38,7 @@ pub extern "C" fn get_xor_mapped_address(
             return -3;
         }
         let options: Options = Options::from(options);
+        #[cfg(debug_assertions)]
         println!("Build options correctly, invoking internal function");
         let xor_mapped_result = _internal_get_xor_mapped_address(
             stun_address.unwrap(),
@@ -53,6 +55,7 @@ pub extern "C" fn get_xor_mapped_address(
         let allocation = alloc(
             Layout::from_size_align(length, mem::align_of::<c_char>()).expect("Could align memory"),
         );
+        // Generates a segmentation
         *result = allocation as *mut c_char;
         ptr::copy(char_ptr, *result, length);
         0
