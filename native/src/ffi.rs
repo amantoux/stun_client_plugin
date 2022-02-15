@@ -1,8 +1,6 @@
-use crate::{get_xor_mapped_address as _internal_get_xor_mapped_address, Options};
+use crate::{error::Error, get_xor_mapped_address as _internal_get_xor_mapped_address, Options};
 use std::{
-    alloc::{alloc, Layout},
     ffi::{CStr, CString},
-    mem,
     net::ToSocketAddrs,
     os::raw::{c_char, c_int, c_long},
     ptr,
@@ -18,46 +16,59 @@ pub unsafe extern "C" fn get_xor_mapped_address(
     stun_address: *const c_char,
     local_port: *const c_char,
     options: COptions,
-    result: *mut *mut c_char,
-) -> c_int {
+) -> Response {
     #[cfg(debug_assertions)]
     println!("Entering the RUST world");
     let rust_stun_adress = CStr::from_ptr(stun_address).to_str();
-    if rust_stun_adress.is_err() {
-        return -1;
+    if let Err(error) = rust_stun_adress {
+        return Response::error(
+            -1,
+            format!(
+                "Could not instantiate STUN server address String: {}",
+                error
+            ),
+        );
     }
     let stun_address = rust_stun_adress.unwrap().to_socket_addrs();
-    if stun_address.is_err() {
-        return -2;
+    if let Err(error) = stun_address {
+        return Response::error(
+            -2,
+            format!("Could not parse STUN server address: {}", error),
+        );
     }
     let stun_address = stun_address.unwrap().last();
     if stun_address.is_none() {
-        return -2;
+        return Response::error(-2, "Could not parse STUN server address".to_string());
     }
 
     let rust_local_port = CStr::from_ptr(local_port).to_str();
-    if rust_local_port.is_err() {
-        return -3;
+    if let Err(error) = rust_local_port {
+        return Response::error(
+            -3,
+            format!("Could not instantiate local port string: {}", error),
+        );
     }
     let options = Options::from(options);
     #[cfg(debug_assertions)]
     println!("Build options correctly, invoking internal function");
     let xor_mapped_result =
         _internal_get_xor_mapped_address(stun_address.unwrap(), rust_local_port.unwrap(), options);
-    if xor_mapped_result.is_err() {
-        return -4;
+    if let Err(error) = xor_mapped_result {
+        let return_value = match error {
+            Error::Default(_) => -5,
+            Error::Binding(_) => -6,
+            Error::Connect(_) => -7,
+            Error::Send(_) => -8,
+            Error::Receive(_) => -9,
+            Error::Parse => -10,
+        };
+        return Response::error(
+            return_value,
+            format!("Error while getting XOR mapped address: {}", error),
+        );
     }
     let rust_result = xor_mapped_result.unwrap().to_string();
-    let length = rust_result.len();
-    let c_string = CString::new(rust_result).unwrap();
-    let char_ptr = c_string.as_ptr();
-    let allocation = alloc(
-        Layout::from_size_align(length, mem::align_of::<c_char>()).expect("Could align memory"),
-    );
-    // Generates a segmentation
-    *result = allocation as *mut c_char;
-    ptr::copy(char_ptr, *result, length);
-    0
+    Response::success(rust_result)
 }
 
 #[repr(C)]
@@ -111,5 +122,34 @@ impl From<&CDuration> for Duration {
             )
         });
         Duration::new(secs, nanos)
+    }
+}
+
+#[repr(C)]
+pub struct Response {
+    status: c_int,
+    value: *const c_char,
+    error: *const c_char,
+}
+
+impl Response {
+    unsafe fn success(value: String) -> Response {
+        let c_string = CString::new(value).unwrap();
+        Response {
+            status: 0,
+            // https://users.rust-lang.org/t/ffi-and-nested-structs/3586
+            value: c_string.into_raw(),
+            error: ptr::null_mut(),
+        }
+    }
+
+    unsafe fn error(status: c_int, error: String) -> Response {
+        let c_string = CString::new(error).unwrap();
+        Response {
+            status,
+            value: ptr::null_mut(),
+            // https://users.rust-lang.org/t/ffi-and-nested-structs/3586
+            error: c_string.into_raw(),
+        }
     }
 }

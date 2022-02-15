@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:stun_client/stun_client.dart';
 
@@ -16,24 +16,25 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String _platformVersion = 'Unknown';
+  String xorMappedAddress = 'Unknown';
 
   @override
   void initState() {
     super.initState();
-    initPlatformState();
+    initXorMappedAddress();
   }
 
-  // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> initPlatformState() async {
-    String platformVersion;
+  Future<void> initXorMappedAddress() async {
+    String mappedAddress;
     // Platform messages may fail, so we use a try/catch PlatformException.
     // We also handle the message potentially returning null.
     try {
-      platformVersion =
-          await StunClient.platformVersion ?? 'Unknown platform version';
-    } on PlatformException {
-      platformVersion = 'Failed to get platform version.';
+      mappedAddress = await StunClient.getXorMappedAddress(
+              'plato-test.mantoux.org:3478',
+              '3522',
+              Options(const Duration(seconds: 10), "stunc"));
+    } catch (e) {
+      mappedAddress = 'Failed to get mapped address. $e';
     }
 
     // If the widget was removed from the tree while the asynchronous platform
@@ -42,7 +43,7 @@ class _MyAppState extends State<MyApp> {
     if (!mounted) return;
 
     setState(() {
-      _platformVersion = platformVersion;
+      xorMappedAddress = mappedAddress;
     });
   }
 
@@ -54,7 +55,7 @@ class _MyAppState extends State<MyApp> {
           title: const Text('Plugin example app'),
         ),
         body: Center(
-          child: Text('Running on: $_platformVersion\n'),
+          child: Text('Running on: $xorMappedAddress\n'),
         ),
       ),
     );

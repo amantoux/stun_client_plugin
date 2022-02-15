@@ -12,6 +12,7 @@ Pod::Spec.new do |s|
   s.license             = { :file => '../LICENSE' }
   s.author              = { 'Plato' => 'alan.mantoux@gmail.com' }
   s.source              = { :path => '.' }
+  s.homepage            = "plato.mantoux.org"
   s.public_header_files = 'Classes**/*.h'
   s.source_files        = 'Classes/**/*'
   s.static_framework    = true

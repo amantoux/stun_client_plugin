@@ -6,11 +6,22 @@ typedef struct CDuration
 
 typedef struct COptions
 {
-  const CDuration *timeout;
+  const struct CDuration *timeout;
   const char *software;
 } COptions;
 
-int get_xor_mapped_address(const char *stun_address,
-                           const char *local_port,
-                           COptions options,
-                           char **result); // extern "C"
+typedef struct Response
+{
+  int status;
+  const char *value;
+  const char *error;
+} Response;
+
+/**
+ * # Safety
+ *
+ * Watch out.
+ */
+Response get_xor_mapped_address(const char *stun_address,
+                                const char *local_port,
+                                struct COptions options);

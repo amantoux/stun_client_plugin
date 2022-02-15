@@ -98,12 +98,18 @@ typedef struct COptions {
   const char *software;
 } COptions;
 
+typedef struct Response
+{
+  int status;
+  const char *value;
+  const char *error;
+} Response;
+
 /**
  * # Safety
  *
  * Watch out.
  */
-int get_xor_mapped_address(const char *stun_address,
+Response get_xor_mapped_address(const char *stun_address,
                            const char *local_port,
-                           struct COptions options,
-                           char **result);
+                           struct COptions options);

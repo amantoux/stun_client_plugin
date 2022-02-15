@@ -20,9 +20,30 @@ pub fn get_xor_mapped_address(
     local_port: &str,
     options: Options,
 ) -> Result<SocketAddr, Error> {
-    let (request_bytes, transaction_id) = build_payload(options.software);
+    internal_get_xor_mapped_address(stun_address, local_port, options, 0)
+}
+
+fn internal_get_xor_mapped_address(
+    stun_address: SocketAddr,
+    local_port: &str,
+    options: Options,
+    attempt_number: i32,
+) -> Result<SocketAddr, Error> {
+    let (request_bytes, transaction_id) = build_payload(options.software.clone());
     let socket = post_stun_request(request_bytes, stun_address, local_port)?;
-    get_stun_result(socket, options.timeout, transaction_id)
+    let result = get_stun_result(socket, options.timeout, transaction_id);
+    if let Err(error) = result {
+        if attempt_number > 9 {
+            return Err(error);
+        }
+        return internal_get_xor_mapped_address(
+            stun_address,
+            local_port,
+            options.clone(),
+            attempt_number + 1,
+        );
+    }
+    result
 }
 
 fn post_stun_request(
@@ -33,15 +54,15 @@ fn post_stun_request(
     // TODO : check if 0.0.0.0 works with all setup (127.0.0.1 does not work on macOS)
     let socket = UdpSocket::bind(format!("0.0.0.0:{}", local_port)).map_err(|err| {
         println!("Could not bind: {}", err);
-        Error::DefaultError(format!("{}", err))
+        Error::Binding(format!("{}", err))
     })?;
     socket.connect(stun_address).map_err(|err| {
         println!("Could not connect: {}", err);
-        Error::DefaultError(format!("{}", err))
+        Error::Connect(format!("{}", err))
     })?;
     socket.send(bytes.as_slice()).map_err(|err| {
         println!("Could not send bytes: {}", err);
-        Error::DefaultError(format!("{}", err))
+        Error::Send(format!("{}", err))
     })?;
     #[cfg(debug_assertions)]
     println!("Sent!!");
@@ -56,18 +77,20 @@ fn get_stun_result(
     let mut buf = [0; 256];
     socket.set_read_timeout(Some(timeout)).map_err(|err| {
         println!("Could not set timeout : {}", err);
-        Error::DefaultError(format!("{}", err))
+        Error::Default(format!("{}", err))
     })?;
     socket.recv_from(&mut buf).map_err(|err| {
         println!("Could not receive : {}", err);
-        Error::DefaultError(format!("{}", err))
+        Error::Receive(format!("{}", err))
     })?;
-    let message = Message::from_raw(&buf).map_err(|err| Error::DefaultError(format!("{}", err)))?;
+    let message = Message::from_raw(&buf).map_err(|err| Error::Default(format!("{}", err)))?;
     if message.get_transaction_id() != transaction_id {
-        return Err(Error::DefaultError("Invalid transaction id".to_string()));
+        return Err(Error::Default("Invalid transaction id".to_string()));
     }
     let address =
         Attribute::get_xor_mapped_address(&message).expect("Could not decode xor mapped address");
+    #[cfg(debug_assertions)]
+    println!("Handled response!!");
     Ok(address)
 }
 
@@ -85,6 +108,15 @@ fn build_payload(software: Option<String>) -> (Vec<u8>, Vec<u8>) {
 pub struct Options {
     timeout: Duration,
     software: Option<String>,
+}
+
+impl Clone for Options {
+    fn clone(&self) -> Self {
+        Self {
+            timeout: self.timeout.clone(),
+            software: self.software.clone(),
+        }
+    }
 }
 
 impl Options {

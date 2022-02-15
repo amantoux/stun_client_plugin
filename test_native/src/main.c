@@ -5,11 +5,10 @@ int main()
 {
   COptions options = {0};
   options.software = "C client";
-  char *result = NULL;
-  int n = get_xor_mapped_address("plato-test.mantoux.org:3478", "3522", options, &result);
-  if (n >= 0)
-    printf("Result is %s\n", result);
+  Response response = get_xor_mapped_address("plato-test.mantoux.org:3478", "3522", options);
+  if (response.status >= 0)
+    printf("Result is %s\n", response.value);
   else
-    printf("Error : %d\n", n);
-  return n;
+    printf("Error : %s\n", response.error);
+  return 0;
 }

@@ -281,7 +281,7 @@ impl Message {
     /// Create a STUN message from raw bytes.
     pub fn from_raw(buf: &[u8]) -> Result<Message, Error> {
         if buf.len() < HEADER_BYTE_SIZE {
-            return Err(Error::ParseError);
+            return Err(Error::Parse);
         }
 
         let header = Header::from_raw(&buf[..HEADER_BYTE_SIZE])?;
@@ -332,7 +332,7 @@ impl Message {
         let mut attributes = HashMap::new();
 
         if attrs_buf.is_empty() {
-            return Err(Error::ParseError);
+            return Err(Error::Parse);
         }
 
         while !attrs_buf.is_empty() {
@@ -347,7 +347,7 @@ impl Message {
             let length = length(&mut attrs_buf);
 
             if attrs_buf.len() < length {
-                return Err(Error::ParseError);
+                return Err(Error::Parse);
             }
 
             let value: Vec<u8> = attrs_buf.drain(..length).collect();
@@ -392,7 +392,7 @@ impl Header {
     pub fn from_raw(buf: &[u8]) -> Result<Header, Error> {
         let mut buf = buf.to_vec();
         if buf.len() < HEADER_BYTE_SIZE {
-            return Err(Error::ParseError);
+            return Err(Error::Parse);
         }
 
         let message_type = u16::from_be_bytes([buf.remove(0), buf.remove(0)]);

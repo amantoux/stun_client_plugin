@@ -6,9 +6,9 @@
   "configurations": [
     {
       "name": "(lldb) Launch",
-      "type": "cppdbg",
+      "type": "lldb",
       "request": "launch",
-      "program": "enter program name, for example ${workspaceFolder}/a.out",
+      "program": "${workspaceFolder}/out/test",
       "args": [],
       "stopAtEntry": false,
       "cwd": "${fileDirname}",

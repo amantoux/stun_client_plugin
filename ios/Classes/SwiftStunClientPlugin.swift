@@ -13,7 +13,10 @@ public class SwiftStunClientPlugin: NSObject, FlutterPlugin {
   }
 
   public func dummyMethodToEnforceBundling() {
-      // This will never be executed
-      get_xor_mapped_address("","", nil, &"");
-    }
+    var duration = CDuration(secs: 10, nanos: 0)
+    let durationPtr = UnsafePointer<CDuration>(&duration)
+    let options = COptions(timeout: durationPtr, software: "ok")
+    // This will never be executed
+    get_xor_mapped_address("","", options);
+  }
 }
