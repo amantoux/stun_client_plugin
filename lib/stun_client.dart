@@ -1,11 +1,9 @@
-import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 
 class CDuration extends Struct {
-
   CDuration() : super();
 
   @Int64()
@@ -40,7 +38,13 @@ class CResponse extends Struct {
   external Pointer<Utf8> error;
 
   Response toNative() {
-    return Response(status, value.address == nullptr.address ? null : value.toDartString(), error.address == nullptr.address ? null : error.toDartString());
+    final response = Response(
+        status,
+        value.address == nullptr.address ? null : value.toDartString(),
+        error.address == nullptr.address ? null : error.toDartString());
+    malloc.free(value);
+    calloc.free(error);
+    return response;
   }
 }
 
@@ -76,26 +80,24 @@ final stunClient = Platform.isAndroid
     ? DynamicLibrary.open("libstunc.so")
     : DynamicLibrary.process();
 
-typedef StunClientGetXorMapped = CResponse Function(Pointer<Utf8>, Pointer<
-    Utf8>, COptions);
-typedef StunClientGetXorMappedFFI = CResponse Function(Pointer<Utf8>, Pointer<
-    Utf8>, COptions);
+typedef StunClientGetXorMapped = CResponse Function(
+    Pointer<Utf8>, Pointer<Utf8>, COptions);
+typedef StunClientGetXorMappedFFI = CResponse Function(
+    Pointer<Utf8>, Pointer<Utf8>, COptions);
 
 final StunClientGetXorMapped getXorMapped = stunClient
     .lookup<NativeFunction<StunClientGetXorMappedFFI>>("get_xor_mapped_address")
     .asFunction();
 
 class StunClient {
-  static Future<String> getXorMappedAddress(String stunIpPort, String localPort,
-      Options stunOptions) async {
-    return Future<String>.microtask(() {
-      final response = getXorMapped(
-          stunIpPort.toNativeUtf8(), localPort.toNativeUtf8(),
-          stunOptions.toNativeOptions().ref).toNative();
-      if (response.status < 0) {
-        throw response.error!;
-      }
-      return response.value!;
-    });
+  static String getXorMappedAddress(
+      String stunIpPort, String localPort, Options stunOptions) {
+    final response = getXorMapped(stunIpPort.toNativeUtf8(),
+            localPort.toNativeUtf8(), stunOptions.toNativeOptions().ref)
+        .toNative();
+    if (response.status < 0) {
+      throw response.error!;
+    }
+    return response.value!;
   }
 }
