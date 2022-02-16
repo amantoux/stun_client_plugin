@@ -80,20 +80,17 @@ final stunClient = Platform.isAndroid
     ? DynamicLibrary.open("libstunc.so")
     : DynamicLibrary.process();
 
-typedef StunClientGetXorMapped = CResponse Function(
-    Pointer<Utf8>, Pointer<Utf8>, COptions);
-typedef StunClientGetXorMappedFFI = CResponse Function(
-    Pointer<Utf8>, Pointer<Utf8>, COptions);
+typedef StunClientGetXorMapped = CResponse Function(Pointer<Utf8>, COptions);
+typedef StunClientGetXorMappedFFI = CResponse Function(Pointer<Utf8>, COptions);
 
 final StunClientGetXorMapped getXorMapped = stunClient
     .lookup<NativeFunction<StunClientGetXorMappedFFI>>("get_xor_mapped_address")
     .asFunction();
 
 class StunClient {
-  static String getXorMappedAddress(
-      String stunIpPort, String localPort, Options stunOptions) {
-    final response = getXorMapped(stunIpPort.toNativeUtf8(),
-            localPort.toNativeUtf8(), stunOptions.toNativeOptions().ref)
+  static String getXorMappedAddress(String stunIpPort, Options stunOptions) {
+    final response = getXorMapped(
+            stunIpPort.toNativeUtf8(), stunOptions.toNativeOptions().ref)
         .toNative();
     if (response.status < 0) {
       throw response.error!;

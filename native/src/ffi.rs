@@ -1,3 +1,5 @@
+use portpicker::pick_unused_port;
+
 use crate::{error::Error, get_xor_mapped_address as _internal_get_xor_mapped_address, Options};
 use std::{
     ffi::{CStr, CString},
@@ -9,12 +11,11 @@ use std::{
 
 /// # Safety
 ///
-/// Watch out.
+/// Unsafe external get XOR mapped address
 #[no_mangle]
 #[allow(unused_assignments, unused_variables)]
 pub unsafe extern "C" fn get_xor_mapped_address(
     stun_address: *const c_char,
-    local_port: *const c_char,
     options: COptions,
 ) -> Response {
     #[cfg(debug_assertions)]
@@ -40,19 +41,15 @@ pub unsafe extern "C" fn get_xor_mapped_address(
     if stun_address.is_none() {
         return Response::error(-2, "Could not parse STUN server address".to_string());
     }
-
-    let rust_local_port = CStr::from_ptr(local_port).to_str();
-    if let Err(error) = rust_local_port {
-        return Response::error(
-            -3,
-            format!("Could not instantiate local port string: {}", error),
-        );
-    }
+    let rust_local_port = pick_unused_port();
     let options = Options::from(options);
     #[cfg(debug_assertions)]
     println!("Build options correctly, invoking internal function");
-    let xor_mapped_result =
-        _internal_get_xor_mapped_address(stun_address.unwrap(), rust_local_port.unwrap(), options);
+    let xor_mapped_result = _internal_get_xor_mapped_address(
+        stun_address.unwrap(),
+        rust_local_port.unwrap().to_string().as_str(),
+        options,
+    );
     if let Err(error) = xor_mapped_result {
         let return_value = match error {
             Error::Default(_) => -5,

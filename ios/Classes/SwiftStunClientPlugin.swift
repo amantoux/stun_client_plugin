@@ -17,6 +17,6 @@ public class SwiftStunClientPlugin: NSObject, FlutterPlugin {
     let durationPtr = UnsafePointer<CDuration>(&duration)
     let options = COptions(timeout: durationPtr, software: "ok")
     // This will never be executed
-    get_xor_mapped_address("","", options);
+    get_xor_mapped_address("", options);
   }
 }

@@ -5,6 +5,7 @@ mod message;
 
 use crate::error::Error;
 use crate::message::{Attribute, Class, Message, Method};
+use std::fmt::Display;
 use std::{
     collections::HashMap,
     net::{SocketAddr, UdpSocket},
@@ -20,30 +21,17 @@ pub fn get_xor_mapped_address(
     local_port: &str,
     options: Options,
 ) -> Result<SocketAddr, Error> {
-    internal_get_xor_mapped_address(stun_address, local_port, options, 0)
-}
-
-fn internal_get_xor_mapped_address(
-    stun_address: SocketAddr,
-    local_port: &str,
-    options: Options,
-    attempt_number: i32,
-) -> Result<SocketAddr, Error> {
+    #[cfg(debug_assertions)]
+    println!(
+        "Requesting mapped address to {}:{} on local port {} with options {}",
+        stun_address.ip(),
+        stun_address.port(),
+        local_port,
+        options
+    );
     let (request_bytes, transaction_id) = build_payload(options.software.clone());
     let socket = post_stun_request(request_bytes, stun_address, local_port)?;
-    let result = get_stun_result(socket, options.timeout, transaction_id);
-    if let Err(error) = result {
-        if attempt_number > 9 {
-            return Err(error);
-        }
-        return internal_get_xor_mapped_address(
-            stun_address,
-            local_port,
-            options.clone(),
-            attempt_number + 1,
-        );
-    }
-    result
+    get_stun_result(socket, options.timeout, transaction_id)
 }
 
 fn post_stun_request(
@@ -80,8 +68,8 @@ fn get_stun_result(
         Error::Default(format!("{}", err))
     })?;
     socket.recv_from(&mut buf).map_err(|err| {
-        println!("Could not receive : {}", err);
-        Error::Receive(format!("{}", err))
+        println!("get_stun_result:: Could not receive : {}", err);
+        Error::Receive(format!("{}\ntimeout: {}", err, timeout.as_secs()))
     })?;
     let message = Message::from_raw(&buf).map_err(|err| Error::Default(format!("{}", err)))?;
     if message.get_transaction_id() != transaction_id {
@@ -94,7 +82,7 @@ fn get_stun_result(
     Ok(address)
 }
 
-fn build_payload(software: Option<String>) -> (Vec<u8>, Vec<u8>) {
+pub fn build_payload(software: Option<String>) -> (Vec<u8>, Vec<u8>) {
     let mut attributes = None;
     if let Some(software) = software {
         let mut attribute_map = HashMap::<Attribute, Vec<u8>>::new();
@@ -102,21 +90,14 @@ fn build_payload(software: Option<String>) -> (Vec<u8>, Vec<u8>) {
         attributes = Some(attribute_map);
     }
     let message = Message::new(Method::Binding, Class::Request, attributes);
+    #[cfg(debug_assertions)]
+    println!("Sent message: {:?}", message);
     (message.to_raw(), message.get_transaction_id())
 }
 
 pub struct Options {
     timeout: Duration,
     software: Option<String>,
-}
-
-impl Clone for Options {
-    fn clone(&self) -> Self {
-        Self {
-            timeout: self.timeout.clone(),
-            software: self.software.clone(),
-        }
-    }
 }
 
 impl Options {
@@ -131,9 +112,32 @@ impl Options {
     }
 }
 
+impl Display for Options {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "timeout:{} - software:{}",
+            self.timeout.as_secs(),
+            self.software.as_ref().unwrap_or(&"None".to_string())
+        )
+    }
+}
+
+impl Clone for Options {
+    fn clone(&self) -> Self {
+        Self {
+            timeout: self.timeout.clone(),
+            software: self.software.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use std::net::{SocketAddr, ToSocketAddrs};
+    use std::{
+        net::{SocketAddr, ToSocketAddrs},
+        time::Duration,
+    };
 
     use crate::{get_xor_mapped_address, Options};
 
@@ -144,8 +148,12 @@ mod test {
             .unwrap()
             .last()
             .expect("Could not parse STUN server");
-        let result = get_xor_mapped_address(socket_address, "3522", Options::new(None, None))
-            .expect("Error while getting mapped address");
+        let result = get_xor_mapped_address(
+            socket_address,
+            "35220",
+            Options::new(Some(Duration::new(3, 0)), None),
+        )
+        .expect("Error while getting mapped address");
         println!("Mapped address: {}", result)
     }
 }
